@@ -5,6 +5,7 @@ import { createContext, useContext, useState, ReactNode, useEffect } from 'react
 import { ethers } from 'ethers';
 import axios from 'axios';
 import contractABI from '@/abi/GovChain.json';
+import { usePersistentWallet } from '../hooks/usePerisistentWallet';
 
 declare global {
   interface Window {
@@ -43,9 +44,13 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   const [account, setAccount] = useState<string | null>(null);
   const [isAuthority, setIsAuthority] = useState(false);
   const [isGovt, setIsGovt] = useState(false);
-
+  const { savedAddress, saveAddress, clearAddress } = usePersistentWallet();
  
-
+  useEffect(() => {
+    if (savedAddress && !account) {
+      connectWallet();
+    }
+  }, [savedAddress]);
   const checkUserRole = (address: string) => {
     const authorityAddress = process.env.NEXT_PUBLIC_AUTHORITY_ADDRESS?.toLowerCase();
     const govtAddress = process.env.NEXT_PUBLIC_GOVT_ADDRESS?.toLowerCase();
@@ -98,6 +103,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         setContract(contract);
         setAccount(account);
         checkUserRole(account);
+        saveAddress(account);
 
       } catch (error) {
         console.error('Error connecting wallet:', error);
@@ -107,6 +113,29 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     }
   };
 
+  const disconnectWallet = () => {
+    setProvider(null);
+    setContract(null);
+    setAccount(null);
+    clearAddress();
+  };
+  
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          saveAddress(accounts[0]);
+        } else {
+          disconnectWallet();
+        }
+      });
+
+      return () => {
+        window.ethereum.removeListener('accountsChanged', () => {});
+      };
+    }
+  }, []);
   const uploadToPinata = async (file: File): Promise<string> => {
     try {
       const formData = new FormData();

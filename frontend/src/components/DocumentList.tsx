@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/DocumentList.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useWeb3 } from '@/contexts/Web3Context';
-
+import LoadingSpinner from '@/components/LoadingSpinner';
+import toast from 'react-hot-toast';
 interface Document {
   tokenId: string;
   ipfsHash: string;
@@ -20,6 +22,9 @@ export default function DocumentList() {
   const [error, setError] = useState<string | null>(null);
   const [transferAddress, setTransferAddress] = useState('');
   const [selectedTokenId, setSelectedTokenId] = useState('');
+  const [pendingTransfers, setPendingTransfers] = useState<Set<string>>(new Set());
+const [pendingApprovals, setPendingApprovals] = useState<Set<string>>(new Set());
+const [isFetching, setIsFetching] = useState(false);
 
   const isEmptyAddress = (address: string) => {
     return address === '0x0000000000000000000000000000000000000000';
@@ -37,6 +42,9 @@ export default function DocumentList() {
     }
 
     try {
+        if (!loading) {
+            setIsFetching(true); // Show small loading indicator for refreshes
+          }
       setLoading(true);
       setError(null);
       const docs = [];
@@ -88,6 +96,7 @@ export default function DocumentList() {
       setError('Failed to fetch documents. Please try again later.');
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
   };
 
@@ -95,30 +104,128 @@ export default function DocumentList() {
     fetchDocuments();
   }, [contract, account]);
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (pendingTransfers.size > 0 || pendingApprovals.size > 0) {
+      interval = setInterval(() => {
+        fetchDocuments();
+      }, 3000); // Poll every 3 seconds when there are pending actions
+    }
+  
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [pendingTransfers, pendingApprovals]);
+
+
+
+  useEffect(() => {
+    if (!contract) return;
+  
+    const handleTransferCompleted = (tokenId: any, from: string, to: string) => {
+      toast.success(
+        <div className="space-y-1">
+          <p className="font-medium">Transfer completed successfully!</p>
+          <p className="text-sm text-gray-500">
+            Document #{tokenId.toString()}
+            <br />
+            From: {truncateAddress(from)}
+            <br />
+            To: {truncateAddress(to)}
+          </p>
+        </div>,
+        {
+          duration: 5000,
+          icon: '🎉'
+        }
+      );
+      fetchDocuments();
+    };
+  
+    contract.on('TransferCompleted', handleTransferCompleted);
+  
+    return () => {
+      contract.off('TransferCompleted', handleTransferCompleted);
+    };
+  }, [contract]);
+
   const handleApprove = async (tokenId: string) => {
     if (!contract || !account) return;
     try {
       setError(null);
+      setPendingApprovals(prev => new Set(prev).add(tokenId));
+       
+    toast.loading(
+        'Processing owner approval...',
+        { id: `approve-${tokenId}` }
+      );
       const tx = await contract.approveTransferAsOwner(tokenId);
       await tx.wait();
+      toast.success(
+        <div>
+          <p className="font-medium">Transfer approved by owner</p>
+          <p className="text-sm text-gray-500">
+            Document #{tokenId}
+          </p>
+        </div>,
+        { id: `approve-${tokenId}` }
+      );
       await fetchDocuments();
     } catch (error: any) {
       console.error('Error approving transfer:', error);
+      toast.error(
+        'Failed to approve transfer',
+        { id: `approve-${tokenId}` }
+      );
       setError('Failed to approve transfer. Please try again.');
-    }
+    }finally {
+        setPendingApprovals(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(tokenId);
+          return newSet;
+        });
+      }
   };
 
   const handleGovtApprove = async (tokenId: string) => {
     if (!contract || !account) return;
     try {
       setError(null);
+      setPendingApprovals(prev => new Set(prev).add(tokenId));
+      toast.loading(
+        'Processing government approval...',
+        { id: `govt-approve-${tokenId}` }
+      );
       const tx = await contract.approveTransferAsGovt(tokenId);
       await tx.wait();
+      toast.success(
+        <div>
+          <p className="font-medium">Transfer approved by government</p>
+          <p className="text-sm text-gray-500">
+            Document #{tokenId}
+          </p>
+        </div>,
+        { id: `govt-approve-${tokenId}` }
+      );
+    //   await new Promise(resolve => setTimeout(resolve, 2000));
       await fetchDocuments();
     } catch (error: any) {
       console.error('Error approving as government:', error);
+      toast.error(
+        'Failed to approve as government',
+        { id: `govt-approve-${tokenId}` }
+      );
       setError('Failed to approve as government. Please try again.');
     }
+    finally {
+    setPendingApprovals(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(tokenId);
+      return newSet;
+    });
+  }
+    
   };
 
   const handleTransferRequest = async (tokenId: string) => {
@@ -128,16 +235,56 @@ export default function DocumentList() {
     }
     try {
       setError(null);
+      setPendingTransfers(prev => new Set(prev).add(tokenId));
+      toast.loading(
+        <div>
+          <p className="font-medium">Initiating transfer</p>
+          <p className="text-sm text-gray-500">
+            From: {truncateAddress(account!)}
+            <br />
+            To: {truncateAddress(transferAddress)}
+          </p>
+        </div>,
+        { id: `transfer-${tokenId}` }
+      );
+
       const tx = await contract.requestTransfer(tokenId, transferAddress);
       await tx.wait();
+      toast.success(
+        <div>
+          <p className="font-medium">Transfer requested</p>
+          <p className="text-sm text-gray-500">
+            From: {truncateAddress(account!)}
+            <br />
+            To: {truncateAddress(transferAddress)}
+          </p>
+        </div>,
+        { id: `transfer-${tokenId}` }
+      );
+        // Add a small delay to allow the blockchain to update
+    // await new Promise(resolve => setTimeout(resolve, 2000));
       await fetchDocuments();
       setTransferAddress('');
       setSelectedTokenId('');
     } catch (error: any) {
       console.error('Error requesting transfer:', error);
+      toast.error(
+        <div>
+          <p className="font-medium">Transfer failed</p>
+          <p className="text-sm text-gray-500">{error.message}</p>
+        </div>,
+        { id: `transfer-${tokenId}` }
+      );
       setError('Failed to request transfer: ' + error.message);
     }
+    finally {
+        setPendingTransfers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(tokenId);
+          return newSet;
+        });
   };
+}
 
   const getIpfsUrl = (ipfsHash: string) => {
     if (ipfsHash.startsWith('ipfs://')) {
@@ -161,11 +308,12 @@ export default function DocumentList() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center py-8">
+        <LoadingSpinner size="large" />
+        <p className="mt-4 text-foreground/70">Loading documents...</p>
       </div>
     );
-  }
+}
 
   if (error) {
     return (
@@ -192,6 +340,12 @@ export default function DocumentList() {
           <h2 className="text-xl font-semibold">
             {isGovernmentAccount(account) ? 'Government Document Review' : 'My Documents'}
           </h2>
+          {isFetching && (
+            <div className="flex items-center gap-2 text-sm text-foreground/70">
+              <LoadingSpinner size="small" />
+              <span>Refreshing...</span>
+            </div>
+          )}
           {isGovernmentAccount(account) && (
             <span className="bg-purple-500/10 text-purple-500 px-2 py-1 rounded text-xs">
               Government View
@@ -252,12 +406,20 @@ export default function DocumentList() {
                         setSelectedTokenId(doc.tokenId);
                       }}
                     />
-                    <button
-                      onClick={() => handleTransferRequest(doc.tokenId)}
-                      className="btn-primary w-full"
-                    >
-                      Request Transfer
-                    </button>
+                   <button
+  onClick={() => handleTransferRequest(doc.tokenId)}
+  disabled={pendingTransfers.has(doc.tokenId)}
+  className="btn-primary w-full"
+>
+  {pendingTransfers.has(doc.tokenId) ? (
+    <div className="flex items-center justify-center gap-2">
+      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      Processing Transfer...
+    </div>
+  ) : (
+    'Request Transfer'
+  )}
+</button>
                   </div>
                 )}
 
@@ -283,15 +445,22 @@ export default function DocumentList() {
 
                     <div className="mt-4 flex gap-2">
                       {/* Owner approval button */}
-                      {doc.owner.toLowerCase() === account.toLowerCase() && 
-                       !doc.ownerApproved && (
-                        <button
-                          onClick={() => handleApprove(doc.tokenId)}
-                          className="btn-primary flex-1"
-                        >
-                          Approve as Owner
-                        </button>
-                      )}
+                      {doc.owner.toLowerCase() === account.toLowerCase() && !doc.ownerApproved && (
+  <button
+    onClick={() => handleApprove(doc.tokenId)}
+    disabled={pendingApprovals.has(doc.tokenId)}
+    className="btn-primary mt-4 w-full"
+  >
+    {pendingApprovals.has(doc.tokenId) ? (
+      <div className="flex items-center justify-center gap-2">
+        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        Processing Approval...
+      </div>
+    ) : (
+      'Approve Transfer'
+    )}
+  </button>
+)}
 
                       {/* Government approval button */}
                       {isGovernmentAccount(account) && !doc.govtApproved && (
