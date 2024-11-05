@@ -1,91 +1,176 @@
-// src/components/DocumentUpload.tsx
-'use client';
+import { useState } from 'react'
+import { useWeb3 } from '@/contexts/Web3Context'
+import { ethers } from 'ethers'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Upload, Network, AlertCircle, CheckCircle2, Loader2, FileText, ArrowUpCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
+import toast from 'react-hot-toast'
 
-import { useState } from 'react';
-import { useWeb3 } from '@/contexts/Web3Context';
-import { ethers } from 'ethers';
+interface TransactionMetadata {
+  hash: string;
+  blockNumber: number;
+  gasUsed: string;
+  tokenId: string;
+  ipfsHash: string;
+}
 
 export default function DocumentUpload() {
-  const { contract, account, uploadToPinata } = useWeb3();
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const { contract, account, uploadToPinata } = useWeb3()
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [status, setStatus] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const showTransactionDetails = (metadata: TransactionMetadata) => {
+    toast.custom(
+      (t) => (
+        <div
+          className={`${
+            t.visible ? 'animate-enter' : 'animate-leave'
+          } max-w-md w-full bg-zinc-900 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+        >
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <ArrowUpCircle className="h-6 w-6 text-green-500" />
+                </div>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  Document Uploaded Successfully
+                </p>
+                <div className="mt-1 space-y-1">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <FileText className="h-4 w-4 mr-1" />
+                    Token ID: #{metadata.tokenId}
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div>Transaction Hash: {truncateAddress(metadata.hash)}</div>
+                    <div>Block Number: {metadata.blockNumber}</div>
+                    <div>Gas Used: {metadata.gasUsed}</div>
+                    <div className="truncate">
+                      IPFS Hash: {truncateAddress(metadata.ipfsHash)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-zinc-700">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-primary hover:text-primary/80 focus:outline-none"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: 8000,
+        position: 'top-right',
+      }
+    );
+  };
 
   const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file || !contract || !account) return;
+    e.preventDefault()
+    if (!file || !contract || !account) return
 
     try {
-      setUploading(true);
-      setError(null);
-      setStatus('Uploading to IPFS...');
+      setUploading(true)
+      setError(null)
+      setStatus('Uploading to IPFS...')
       
-      // Upload to IPFS via Pinata
-      const ipfsHash = await uploadToPinata(file);
+      const ipfsHash = await uploadToPinata(file)
       
-      setStatus('Preparing transaction...');
+      setStatus('Preparing transaction...')
       
-      // Get signer's network
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const network = await provider.getNetwork();
-      console.log('Current network:', network);
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const network = await provider.getNetwork()
+      console.log('Current network:', network)
 
-      // Get signer's balance
-      const balance = await provider.getBalance(account);
-      console.log('Account balance:', ethers.formatEther(balance));
+      const balance = await provider.getBalance(account)
+      console.log('Account balance:', ethers.formatEther(balance))
 
-      // Estimate gas with a higher limit
-      setStatus('Estimating gas...');
-      const gasEstimate = await contract.uploadDocument.estimateGas(ipfsHash);
-      console.log('Estimated gas:', gasEstimate.toString());
+      setStatus('Estimating gas...')
+      const gasEstimate = await contract.uploadDocument.estimateGas(ipfsHash)
+      console.log('Estimated gas:', gasEstimate.toString())
 
-      // Add 20% buffer to gas estimate
-      const gasLimit = Math.ceil(Number(gasEstimate) * 1.2);
+      const gasLimit = Math.ceil(Number(gasEstimate) * 1.2)
       
-      setStatus('Creating transaction...');
+      setStatus('Creating transaction...')
       const tx = await contract.uploadDocument(ipfsHash, {
         from: account,
         gasLimit: gasLimit,
+      })
+      
+      setStatus('Waiting for confirmation...')
+      console.log('Transaction hash:', tx.hash)
+      
+      const receipt = await tx.wait()
+      console.log('Transaction receipt:', receipt)
+
+      // Get the token ID from the DocumentCreated event
+      const event = receipt.logs.find((log: any) => {
+        try {
+          const parsedLog = contract.interface.parseLog(log);
+          return parsedLog?.name === 'DocumentCreated';
+        } catch {
+          return false;
+        }
+      });
+
+      const tokenId = event ? contract.interface.parseLog(event)?.args?.[0].toString() : 'Unknown';
+      
+      // Show transaction details toast
+      showTransactionDetails({
+        hash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed.toString(),
+        tokenId: tokenId,
+        ipfsHash: ipfsHash
       });
       
-      setStatus('Waiting for confirmation...');
-      console.log('Transaction hash:', tx.hash);
-      
-      const receipt = await tx.wait();
-      console.log('Transaction receipt:', receipt);
-      
-      setStatus('Document uploaded successfully!');
-      setFile(null);
+      setStatus('Document uploaded successfully!')
+      setFile(null)
     } catch (error: any) {
-      console.error('Upload error details:', error);
-      let errorMessage = 'Error uploading document. ';
+      console.error('Upload error details:', error)
+      let errorMessage = 'Error uploading document. '
       
       if (error.code === 'ACTION_REJECTED') {
-        errorMessage += 'Transaction was rejected by user.';
+        errorMessage += 'Transaction was rejected by user.'
       } else if (error.code === -32603) {
-        errorMessage += 'Please verify you have enough ETH and are connected to the correct network.';
+        errorMessage += 'Please verify you have enough ETH and are connected to the correct network.'
       } else {
-        errorMessage += error.message || 'Unknown error occurred.';
+        errorMessage += error.message || 'Unknown error occurred.'
       }
       
-      setError(errorMessage);
-      setStatus('');
+      setError(errorMessage)
+      setStatus('')
+
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-medium">Upload Failed</span>
+          <span className="text-sm">{errorMessage}</span>
+        </div>
+      );
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const verifyNetwork = async () => {
     if (window.ethereum) {
       try {
-        // Request network switch
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x7A69' }], // 31337 in hex
-        });
+          params: [{ chainId: '0x7A69' }],
+        })
       } catch (switchError: any) {
-        // Network doesn't exist, add it
         if (switchError.code === 4902) {
           try {
             await window.ethereum.request({
@@ -96,59 +181,105 @@ export default function DocumentUpload() {
                 nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
                 rpcUrls: ['http://127.0.0.1:8545'],
               }],
-            });
+            })
           } catch (addError) {
-            console.error('Error adding network:', addError);
+            console.error('Error adding network:', addError)
           }
         }
       }
     }
-  };
+  }
+
+  const truncateAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
+  }
 
   return (
-    <div className="max-w-md mx-auto">
-      <form onSubmit={handleUpload} className="space-y-4">
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
-            Select Document
-          </label>
-          <input
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full p-2 border rounded"
-            disabled={uploading}
-          />
-        </div>
+    <Card className="border-zinc-800 bg-zinc-900/50 backdrop-blur-xl">
+      <CardHeader>
+        <CardTitle>Upload Document</CardTitle>
+        <CardDescription>Upload your document to IPFS and register it on the blockchain</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleUpload} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="document">Select Document</Label>
+            <div className="relative">
+              <input
+                id="document"
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="hidden"
+                disabled={uploading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-muted-foreground hover:text-foreground",
+                  file && "text-foreground"
+                )}
+                onClick={() => document.getElementById("document")?.click()}
+                disabled={uploading}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {file ? file.name : "Choose file"}
+              </Button>
+            </div>
+          </div>
 
-        <button
-          type="button"
-          onClick={verifyNetwork}
-          className="w-full bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 mb-2"
-        >
-          Verify Network Connection
-        </button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={verifyNetwork}
+              disabled={uploading}
+            >
+              <Network className="mr-2 h-4 w-4" />
+              Verify Network Connection
+            </Button>
 
-        <button
-          type="submit"
-          disabled={!file || uploading || !account}
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {uploading ? 'Uploading...' : 'Upload Document'}
-        </button>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!file || uploading || !account}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {status}
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Document
+                </>
+              )}
+            </Button>
+          </div>
 
-        {status && (
-          <p className="mt-4 text-center text-sm text-gray-600">{status}</p>
-        )}
-        {error && (
-          <p className="mt-4 text-center text-sm text-red-600">{error}</p>
-        )}
+          {(status || error) && (
+            <div className={cn(
+              "p-3 rounded-lg text-sm flex items-start gap-2",
+              error ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"
+            )}>
+              {error ? (
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+              )}
+              <p>{error || status}</p>
+            </div>
+          )}
 
-        {account && (
-          <p className="mt-4 text-center text-sm text-gray-600">
-            Connected Account: {account}
-          </p>
-        )}
-      </form>
-    </div>
-  );
+          {account && (
+            <div className="text-sm text-muted-foreground text-center">
+              Connected Account: {truncateAddress(account)}
+            </div>
+          )}
+        </form>
+      </CardContent>
+    </Card>
+  )
 }

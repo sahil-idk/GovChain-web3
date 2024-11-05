@@ -127,7 +127,7 @@ const [isFetching, setIsFetching] = useState(false);
       toast.success(
         <div className="space-y-1">
           <p className="font-medium">Transfer completed successfully!</p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm ">
             Document #{tokenId.toString()}
             <br />
             From: {truncateAddress(from)}
@@ -300,7 +300,7 @@ const [isFetching, setIsFetching] = useState(false);
 
   if (!account) {
     return (
-      <div className="text-center text-foreground/70 py-8">
+      <div className="text-center py-8">
         Please connect your wallet to view documents.
       </div>
     );
@@ -360,10 +360,10 @@ const [isFetching, setIsFetching] = useState(false);
       <div className="grid gap-4">
         {documents.map((doc) => (
           <div key={doc.tokenId} className="card">
-            <div className="flex justify-between items-start p-6">
+            <div className="flex justify-between items-start p-6 text-white">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg">Document #{doc.tokenId}</span>
+                  <span className="font-bold text-lg text-black">Document #{doc.tokenId}</span>
                   {doc.owner.toLowerCase() === account.toLowerCase() && (
                     <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs">
                       Owner
@@ -428,7 +428,7 @@ const [isFetching, setIsFetching] = useState(false);
                     <p className="font-medium text-primary mb-2">
                       Transfer Pending to: {truncateAddress(doc.pendingOwner)}
                     </p>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm text-black">
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${
                           doc.ownerApproved ? 'bg-green-500' : 'bg-foreground/20'

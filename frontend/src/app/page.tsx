@@ -1,82 +1,102 @@
-// src/app/page.tsx
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useWeb3 } from '@/contexts/Web3Context';
-import DocumentUpload from '@/components/DocumentUpload';
-import DocumentList from '@/components/DocumentList';
-import IncomingTransfers from '@/components/IncomingTransfers';
+import { useState } from "react"
+import { Web3Provider, useWeb3 } from "@/contexts/Web3Context"
+import DocumentUpload from "@/components/DocumentUpload"
+import DocumentList from "@/components/DocumentList"
+import IncomingTransfers from "@/components/IncomingTransfers"
+import TransactionHistory from "@/components/TransactionHistory"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { ArrowLeftRight, FileText, History, LogOut, Upload } from "lucide-react"
 
 export default function Home() {
-  const { account, connectWallet } = useWeb3();
-  const [activeTab, setActiveTab] = useState('documents');
+  const { account, connectWallet, disconnectWallet } = useWeb3()
+  const [activeTab, setActiveTab] = useState("documents")
 
   const truncateAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
+  }
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4">GovChain Document Management</h1>
-          {!account ? (
-            <button
-              onClick={connectWallet}
-              className="btn-primary"
+    <div className="flex h-screen bg-black text-white font-sans antialiased overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]">
+        <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/30 via-transparent to-blue-500/30 animate-gradient-shift" />
+      </div>
+
+      {/* Side Navigation */}
+      <nav className="relative z-10 w-64 bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 text-transparent bg-clip-text">
+            GovChain
+          </h1>
+          <p className="text-sm text-zinc-400">Document Management</p>
+        </div>
+        <div className="space-y-2 flex-1">
+          {[
+            { id: "documents", icon: FileText, label: "My Documents" },
+            { id: "upload", icon: Upload, label: "Upload Document" },
+            { id: "history", icon: History, label: "Transaction History" },
+          ].map((item) => (
+            <Button
+              key={item.id}
+              variant="ghost"
+              className={`w-full justify-start ${
+                activeTab === item.id ? "bg-zinc-800/50 text-white" : ""
+              }`}
+              onClick={() => setActiveTab(item.id)}
             >
-              Connect Wallet
-            </button>
+              <item.icon className="mr-2 h-4 w-4" />
+              {item.label}
+            </Button>
+          ))}
+        </div>
+        <div className="mt-auto">
+          {account ? (
+            <>
+              <div className="mb-2 p-2 rounded-md bg-zinc-800/50 text-xs font-mono text-zinc-400">
+                {truncateAddress(account)}
+              </div>
+              <Button onClick={disconnectWallet} variant="ghost" className="w-full justify-start text-red-400">
+                <LogOut className="mr-2 h-4 w-4" />
+                Disconnect
+              </Button>
+            </>
           ) : (
-            <p className="text-foreground/80">
-              Connected: {truncateAddress(account)}
-            </p>
+            <Button onClick={connectWallet} className="w-full">
+              Connect Wallet
+            </Button>
           )}
         </div>
+      </nav>
 
-        {account && (
-          <>
-            <div className="flex space-x-4 mb-6">
-              <button
-                onClick={() => setActiveTab('documents')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'documents' 
-                    ? 'btn-primary' 
-                    : 'bg-foreground/5 text-foreground/70 hover:bg-foreground/10'
-                }`}
-              >
-                My Documents
-              </button>
-              <button
-                onClick={() => setActiveTab('upload')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'upload' 
-                    ? 'btn-primary' 
-                    : 'bg-foreground/5 text-foreground/70 hover:bg-foreground/10'
-                }`}
-              >
-                Upload Document
-              </button>
-              <button
-                onClick={() => setActiveTab('incoming')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'incoming' 
-                    ? 'btn-primary' 
-                    : 'bg-foreground/5 text-foreground/70 hover:bg-foreground/10'
-                }`}
-              >
-                Incoming Transfers
-              </button>
-            </div>
+      {/* Main Content */}
+      <main className="flex-1 p-6 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-3xl font-bold mb-6">
+              {activeTab === "documents" && "My Documents"}
+              {activeTab === "upload" && "Upload Document"}
+              {/* {activeTab === "incoming" && "Incoming Transfers"} */}
+              {activeTab === "history" && "Transaction History"}
+            </h1>
 
-            <div className="card p-6">
-              {activeTab === 'documents' && <DocumentList />}
-              {activeTab === 'upload' && <DocumentUpload />}
-              {activeTab === 'incoming' && <IncomingTransfers />}
-            </div>
-          </>
-        )}
-      </div>
+            {account ? (
+              <>
+                {activeTab === "documents" && <DocumentList />}
+                {activeTab === "upload" && <DocumentUpload />}
+                {/* {activeTab === "incoming" && <IncomingTransfers />} */}
+                {activeTab === "history" && <TransactionHistory />}
+              </>
+            ) : (
+              <div className="text-center text-zinc-400 py-12">
+                Please connect your wallet to access the document management system.
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </main>
     </div>
-  );
+  )
 }

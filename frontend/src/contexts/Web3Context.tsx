@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/contexts/Web3Context.tsx
 'use client';
 
@@ -6,7 +7,7 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import contractABI from '@/abi/GovChain.json';
 import { usePersistentWallet } from '../hooks/usePerisistentWallet';
-
+import toast from 'react-hot-toast'
 declare global {
   interface Window {
     ethereum?: any;
@@ -63,28 +64,63 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   const connectWallet = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
+        // Check if MetaMask is installed and unlocked
+        const isUnlocked = await window.ethereum._metamask?.isUnlocked();
+        if (!isUnlocked) {
+          toast.error(
+            <div>
+              <p className="font-medium">MetaMask is locked</p>
+              <p className="text-sm">Please unlock your MetaMask wallet to continue</p>
+            </div>
+          );
+          return;
+        }
+
         // Request account access
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         
-        // Check if we're on the right network
+        // Check network
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
         if (chainId !== process.env.NEXT_PUBLIC_CHAIN_ID) {
+          toast.loading('Switching to correct network...', { id: 'network-switch' });
           try {
             await window.ethereum.request({
               method: 'wallet_switchEthereumChain',
               params: [{ chainId: `0x${Number(process.env.NEXT_PUBLIC_CHAIN_ID).toString(16)}` }],
             });
+            toast.success('Network switched successfully', { id: 'network-switch' });
           } catch (error: any) {
             if (error.code === 4902) {
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: `0x${Number(process.env.NEXT_PUBLIC_CHAIN_ID).toString(16)}`,
-                  chainName: 'Anvil Local',
-                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-                  rpcUrls: [process.env.NEXT_PUBLIC_NETWORK_RPC],
-                }],
-              });
+              try {
+                toast.loading('Adding Anvil network...', { id: 'network-add' });
+                await window.ethereum.request({
+                  method: 'wallet_addEthereumChain',
+                  params: [{
+                    chainId: `0x${Number(process.env.NEXT_PUBLIC_CHAIN_ID).toString(16)}`,
+                    chainName: 'Anvil Local',
+                    nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                    rpcUrls: [process.env.NEXT_PUBLIC_NETWORK_RPC],
+                  }],
+                });
+                toast.success('Network added successfully', { id: 'network-add' });
+              } catch (addError: any) {
+                toast.error(
+                  <div>
+                    <p className="font-medium">Failed to add network</p>
+                    <p className="text-sm">Please add Anvil network manually to MetaMask</p>
+                  </div>,
+                  { id: 'network-add' }
+                );
+                return;
+              }
+            } else {
+              toast.error(
+                <div>
+                  <p className="font-medium">Network switch failed</p>
+                  <p className="text-sm">Please switch to Anvil network manually</p>
+                </div>
+              );
+              return;
             }
           }
         }
@@ -105,37 +141,107 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         checkUserRole(account);
         saveAddress(account);
 
-      } catch (error) {
+        toast.success(
+          <div>
+            <p className="font-medium">Connected successfully</p>
+            <p className="text-sm">Account: {account.slice(0, 6)}...{account.slice(-4)}</p>
+          </div>
+        );
+
+      } catch (error: any) {
         console.error('Error connecting wallet:', error);
+        
+        // Handle specific error cases
+        if (error.code === 4001) {
+          toast.error(
+            <div>
+              <p className="font-medium">Connection rejected</p>
+              <p className="text-sm">Please approve the connection request in MetaMask</p>
+            </div>
+          );
+        } else if (error.code === -32002) {
+          toast.error(
+            <div>
+              <p className="font-medium">Connection pending</p>
+              <p className="text-sm">Please check MetaMask for a pending connection request</p>
+            </div>
+          );
+        } else if (error.message?.includes('already processing')) {
+          toast.error(
+            <div>
+              <p className="font-medium">Request in progress</p>
+              <p className="text-sm">Please complete the pending MetaMask request</p>
+            </div>
+          );
+        } else {
+          toast.error(
+            <div>
+              <p className="font-medium">Connection failed</p>
+              <p className="text-sm">Please try again or refresh the page</p>
+            </div>
+          );
+        }
       }
     } else {
-      console.error('MetaMask is not installed');
+      toast.error(
+        <div>
+          <p className="font-medium">MetaMask not found</p>
+          <p className="text-sm">Please install MetaMask to use this application</p>
+          <a 
+            href="https://metamask.io/download/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-600 text-sm mt-1 block"
+          >
+            Download MetaMask
+          </a>
+        </div>,
+        { duration: 6000 }
+      );
     }
   };
+
 
   const disconnectWallet = () => {
     setProvider(null);
     setContract(null);
     setAccount(null);
     clearAddress();
+    toast.success('Wallet disconnected successfully');
   };
-  
   useEffect(() => {
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length > 0) {
           setAccount(accounts[0]);
           saveAddress(accounts[0]);
+          checkUserRole(accounts[0]);
+          toast.success(
+            <div>
+              <p className="font-medium">Account switched</p>
+              <p className="text-sm">New account: {accounts[0].slice(0, 6)}...{accounts[0].slice(-4)}</p>
+            </div>
+          );
         } else {
           disconnectWallet();
         }
       });
 
+      window.ethereum.on('chainChanged', () => {
+        toast.loading('Network changed, refreshing...', 
+          { id: 'chain-change', duration: 1000 }
+        );
+        setTimeout(() => window.location.reload(), 1000);
+      });
+
       return () => {
         window.ethereum.removeListener('accountsChanged', () => {});
+        window.ethereum.removeListener('chainChanged', () => {});
       };
     }
   }, []);
+
+  
   const uploadToPinata = async (file: File): Promise<string> => {
     try {
       const formData = new FormData();
