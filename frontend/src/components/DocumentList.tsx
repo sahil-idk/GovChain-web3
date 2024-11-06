@@ -59,10 +59,6 @@ const [isFetching, setIsFetching] = useState(false);
             const documentOwner = doc.owner.toLowerCase();
             const currentUser = account.toLowerCase();
             
-            // Show documents if:
-            // 1. User is government (show all documents with pending transfers)
-            // 2. User is owner
-            // 3. User is pending owner
             if (isGovt ||
                 documentOwner === currentUser || 
                 (doc.pendingOwner && doc.pendingOwner.toLowerCase() === currentUser) ||
@@ -260,8 +256,7 @@ const [isFetching, setIsFetching] = useState(false);
         </div>,
         { id: `transfer-${tokenId}` }
       );
-        // Added a small delay to allow the blockchain to update
-    // await new Promise(resolve => setTimeout(resolve, 2000));
+
       await fetchDocuments();
       setTransferAddress('');
       setSelectedTokenId('');

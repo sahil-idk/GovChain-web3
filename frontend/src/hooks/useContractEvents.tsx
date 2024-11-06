@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/hooks/useContractEvents.ts
+
 import { useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { truncateAddress } from '@/utils/address'; // We'll create this
@@ -8,7 +9,7 @@ export function useContractEvents(contract: any, fetchDocuments: () => Promise<v
   useEffect(() => {
     if (!contract) return;
 
-    // Handle new document creation
+    
     const handleDocumentCreated = (tokenId: any, ipfsHash: string, owner: string) => {
       toast.success(
         <div>
@@ -23,7 +24,7 @@ export function useContractEvents(contract: any, fetchDocuments: () => Promise<v
       fetchDocuments();
     };
 
-    // Handle transfer requests
+ 
     const handleTransferRequested = (tokenId: any, from: string, to: string) => {
       toast(
         <div>
@@ -41,7 +42,7 @@ export function useContractEvents(contract: any, fetchDocuments: () => Promise<v
       fetchDocuments();
     };
 
-    // Handle owner approvals
+  
     const handleOwnerApproved = (tokenId: any, owner: string) => {
       toast.success(
         <div>
@@ -56,7 +57,7 @@ export function useContractEvents(contract: any, fetchDocuments: () => Promise<v
       fetchDocuments();
     };
 
-    // Handle government approvals
+  
     const handleGovtApproved = (tokenId: any, govt: string) => {
       toast.success(
         <div>
@@ -69,7 +70,7 @@ export function useContractEvents(contract: any, fetchDocuments: () => Promise<v
       fetchDocuments();
     };
 
-    // Handle completed transfers
+   
     const handleTransferCompleted = (tokenId: any, from: string, to: string) => {
       toast.success(
         <div>
@@ -87,14 +88,14 @@ export function useContractEvents(contract: any, fetchDocuments: () => Promise<v
       fetchDocuments();
     };
 
-    // Set up event listeners
+  
     contract.on('DocumentCreated', handleDocumentCreated);
     contract.on('TransferRequested', handleTransferRequested);
     contract.on('OwnerApproved', handleOwnerApproved);
     contract.on('GovtApproved', handleGovtApproved);
     contract.on('TransferCompleted', handleTransferCompleted);
 
-    // Cleanup
+  
     return () => {
       contract.off('DocumentCreated', handleDocumentCreated);
       contract.off('TransferRequested', handleTransferRequested);

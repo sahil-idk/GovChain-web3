@@ -1,11 +1,9 @@
-// src/hooks/usePersistentWallet.ts
 import { useState, useEffect } from 'react';
 
 export function usePersistentWallet() {
   const [savedAddress, setSavedAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load saved address on mount
     const saved = localStorage.getItem('walletAddress');
     if (saved) setSavedAddress(saved);
   }, []);

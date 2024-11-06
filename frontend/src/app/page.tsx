@@ -19,12 +19,9 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-black text-white font-sans antialiased overflow-hidden">
- 
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]">
         <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/30 via-transparent to-blue-500/30 animate-gradient-shift" />
       </div>
-
-  
       <nav className="relative z-10 w-64 bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
         <div className="mb-8">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 text-transparent bg-clip-text">

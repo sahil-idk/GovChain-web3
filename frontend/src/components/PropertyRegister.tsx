@@ -1,4 +1,3 @@
-// src/components/PropertyRegistration.tsx
 'use client';
 
 import { useState } from 'react';

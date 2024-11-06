@@ -1,7 +1,6 @@
-// constants/networks.ts
 export const NETWORKS = {
     sepolia: {
-      chainId: '0xaa36a7', // 11155111 in hex
+      chainId: '0xaa36a7',
       chainName: 'Sepolia',
       nativeCurrency: {
         name: 'SepoliaETH',

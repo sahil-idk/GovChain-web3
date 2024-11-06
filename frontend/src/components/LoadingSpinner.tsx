@@ -1,4 +1,3 @@
-
 export default function LoadingSpinner({ 
     size = 'small',
     className = ''

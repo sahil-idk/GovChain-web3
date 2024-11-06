@@ -127,7 +127,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     }
 
     try {
-      // Request accounts without checking lock status
+
       const accounts = await window.ethereum.request({ 
         method: 'eth_requestAccounts' 
       });
@@ -152,7 +152,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         toast.success('Switched to Sepolia network', { id: 'network-switch' });
       }
 
-      // Initialize provider and contract
+
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
@@ -195,7 +195,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     }
   };
 
-  // Rest of your code remains the same...
   const disconnectWallet = () => {
     setProvider(null);
     setContract(null);
@@ -261,7 +260,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.ethereum) {
-      // Listen for account changes
+      
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length > 0) {
           setAccount(accounts[0]);
@@ -274,7 +273,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         }
       });
 
-      // Listen for chain changes
+      
       window.ethereum.on('chainChanged', () => {
         window.location.reload();
       });
