@@ -12,11 +12,30 @@ GovChain is a blockchain-based document verification and management system built
 
 ## Repository Structure
 
-```
 GovChain-web3/
-├── frontend/             # Next.js 14 frontend application
-├── GovChainContract/    # Smart contract files
-```
+├── frontend/                    # Next.js 14 frontend application
+│   ├── constants/              # Constants and configurations
+│   ├── public/                 # Public assets
+│   ├── src/                    # Source code
+│   ├── .eslintrc.json         # ESLint configuration
+│   ├── .gitignore             # Git ignore rules
+│   ├── README.md              # Frontend documentation
+│   ├── components.json        # UI components configuration
+│   ├── next.config.ts         # Next.js configuration
+│   ├── package.json           # Package dependencies
+│   ├── postcss.config.mjs     # PostCSS configuration
+│   ├── tailwind.config.ts     # Tailwind CSS configuration
+│   └── tsconfig.json          # TypeScript configuration
+│
+├── GovChainContract/          # Smart contract files
+│   ├── lib/                   # Contract libraries
+│   ├── script/                # Deployment scripts
+│   ├── src/                   # Contract source files
+│   ├── test/                  # Contract tests
+│   ├── .gitignore            # Git ignore rules
+│   ├── GovChain.json         # Contract ABI
+│   ├── README.md             # Contract documentation
+│   └── foundry.toml          # Foundry configuration
 
 ## Prerequisites
 
