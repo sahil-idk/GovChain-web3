@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/contexts/Web3Context.tsx
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -26,9 +25,9 @@ interface Web3ContextType {
   provider: ethers.BrowserProvider | null;
   contract: ethers.Contract | null;
   account: string | null;
-  isAuthority: boolean;
   isGovt: boolean;
   connectWallet: () => Promise<void>;
+  disconnectWallet: () => void;  
   uploadToPinata: (file: File) => Promise<string>;
   getDocument?: (tokenId: number) => Promise<Document>;
 }
@@ -43,7 +42,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [account, setAccount] = useState<string | null>(null);
-  const [isAuthority, setIsAuthority] = useState(false);
   const [isGovt, setIsGovt] = useState(false);
   const { savedAddress, saveAddress, clearAddress } = usePersistentWallet();
  
@@ -53,11 +51,10 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     }
   }, [savedAddress]);
   const checkUserRole = (address: string) => {
-    const authorityAddress = process.env.NEXT_PUBLIC_AUTHORITY_ADDRESS?.toLowerCase();
+
     const govtAddress = process.env.NEXT_PUBLIC_GOVT_ADDRESS?.toLowerCase();
     const userAddress = address.toLowerCase();
 
-    setIsAuthority(userAddress === authorityAddress);
     setIsGovt(userAddress === govtAddress);
   };
 
@@ -276,7 +273,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
           setAccount(null);
           setProvider(null);
           setContract(null);
-          setIsAuthority(false);
           setIsGovt(false);
         }
       });
@@ -297,9 +293,9 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     provider,
     contract,
     account,
-    isAuthority,
     isGovt,
     connectWallet,
+    disconnectWallet,
     uploadToPinata
   };
 
