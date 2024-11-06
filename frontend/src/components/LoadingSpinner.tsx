@@ -1,4 +1,4 @@
-// src/components/LoadingSpinner.tsx
+
 export default function LoadingSpinner({ 
     size = 'small',
     className = ''

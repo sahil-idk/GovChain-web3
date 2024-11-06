@@ -270,7 +270,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
           setAccount(null);
           setProvider(null);
           setContract(null);
-          setIsAuthority(false);
           setIsGovt(false);
         }
       });

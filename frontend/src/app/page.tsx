@@ -1,14 +1,13 @@
 'use client'
 
 import { useState } from "react"
-import { Web3Provider, useWeb3 } from "@/contexts/Web3Context"
+import { useWeb3 } from "@/contexts/Web3Context"
 import DocumentUpload from "@/components/DocumentUpload"
 import DocumentList from "@/components/DocumentList"
-import IncomingTransfers from "@/components/IncomingTransfers"
 import TransactionHistory from "@/components/TransactionHistory"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ArrowLeftRight, FileText, History, LogOut, Upload } from "lucide-react"
+import { FileText, History, LogOut, Upload } from "lucide-react"
 
 export default function Home() {
   const { account, connectWallet, disconnectWallet } = useWeb3()
@@ -20,12 +19,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-black text-white font-sans antialiased overflow-hidden">
-      {/* Animated background */}
+ 
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]">
         <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/30 via-transparent to-blue-500/30 animate-gradient-shift" />
       </div>
 
-      {/* Side Navigation */}
+  
       <nav className="relative z-10 w-64 bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 p-4 flex flex-col">
         <div className="mb-8">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 text-transparent bg-clip-text">
@@ -71,14 +70,13 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Main Content */}
+
       <main className="flex-1 p-6 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-3xl font-bold mb-6">
               {activeTab === "documents" && "My Documents"}
               {activeTab === "upload" && "Upload Document"}
-              {/* {activeTab === "incoming" && "Incoming Transfers"} */}
               {activeTab === "history" && "Transaction History"}
             </h1>
 
@@ -86,7 +84,6 @@ export default function Home() {
               <>
                 {activeTab === "documents" && <DocumentList />}
                 {activeTab === "upload" && <DocumentUpload />}
-                {/* {activeTab === "incoming" && <IncomingTransfers />} */}
                 {activeTab === "history" && <TransactionHistory />}
               </>
             ) : (

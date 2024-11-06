@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -41,7 +42,7 @@ const [isFetching, setIsFetching] = useState(false);
 
     try {
         if (!loading) {
-            setIsFetching(true); // Show small loading indicator for refreshes
+            setIsFetching(true); 
           }
       setLoading(true);
       setError(null);
@@ -108,7 +109,7 @@ const [isFetching, setIsFetching] = useState(false);
     if (pendingTransfers.size > 0 || pendingApprovals.size > 0) {
       interval = setInterval(() => {
         fetchDocuments();
-      }, 3000); // Poll every 3 seconds when there are pending actions
+      }, 3000); // Refresh every 3 seconds
     }
   
     return () => {
@@ -206,7 +207,7 @@ const [isFetching, setIsFetching] = useState(false);
         </div>,
         { id: `govt-approve-${tokenId}` }
       );
-    //   await new Promise(resolve => setTimeout(resolve, 2000));
+   
       await fetchDocuments();
     } catch (error: any) {
       console.error('Error approving as government:', error);
@@ -259,7 +260,7 @@ const [isFetching, setIsFetching] = useState(false);
         </div>,
         { id: `transfer-${tokenId}` }
       );
-        // Add a small delay to allow the blockchain to update
+        // Added a small delay to allow the blockchain to update
     // await new Promise(resolve => setTimeout(resolve, 2000));
       await fetchDocuments();
       setTransferAddress('');
