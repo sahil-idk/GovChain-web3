@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/DocumentList.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
