@@ -10,8 +10,11 @@ GovChain is a blockchain-based document verification and management system built
 - **Transparent Tracking**: On-chain verification status and complete audit trail
 - **Decentralized Storage**: IPFS integration with unique Content Identifiers (CID)
 
+
+
 ## Repository Structure
 
+```
 GovChain-web3/
 ├── frontend/                    # Next.js 14 frontend application
 │   ├── constants/              # Constants and configurations
@@ -36,7 +39,9 @@ GovChain-web3/
 │   ├── GovChain.json         # Contract ABI
 │   ├── README.md             # Contract documentation
 │   └── foundry.toml          # Foundry configuration
+```
 
+[Rest of the README remains the same]
 ## Prerequisites
 
 - Node.js (v18 or higher)
