@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/contexts/Web3Context.tsx
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -7,7 +5,21 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import contractABI from '@/abi/GovChain.json';
 import { usePersistentWallet } from '../hooks/usePerisistentWallet';
-import toast from 'react-hot-toast'
+import toast from 'react-hot-toast';
+
+// Network configuration
+const SEPOLIA_CONFIG = {
+  chainId: '0xaa36a7', // 11155111 in hex
+  chainName: 'Sepolia',
+  nativeCurrency: {
+    name: 'SepoliaETH',
+    symbol: 'ETH',
+    decimals: 18
+  },
+  rpcUrls: [`https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`],
+  blockExplorerUrls: ['https://sepolia.etherscan.io']
+};
+
 declare global {
   interface Window {
     ethereum?: any;
@@ -52,6 +64,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       connectWallet();
     }
   }, [savedAddress]);
+
   const checkUserRole = (address: string) => {
     const authorityAddress = process.env.NEXT_PUBLIC_AUTHORITY_ADDRESS?.toLowerCase();
     const govtAddress = process.env.NEXT_PUBLIC_GOVT_ADDRESS?.toLowerCase();
@@ -61,70 +74,87 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     setIsGovt(userAddress === govtAddress);
   };
 
+  const switchToSepolia = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: SEPOLIA_CONFIG.chainId }],
+      });
+      return true;
+    } catch (switchError: any) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: SEPOLIA_CONFIG.chainId,
+              chainName: SEPOLIA_CONFIG.chainName,
+              nativeCurrency: SEPOLIA_CONFIG.nativeCurrency,
+              rpcUrls: SEPOLIA_CONFIG.rpcUrls,
+              blockExplorerUrls: SEPOLIA_CONFIG.blockExplorerUrls
+            }],
+          });
+          return true;
+        } catch (addError) {
+          console.error('Error adding Sepolia:', addError);
+          toast.error('Failed to add Sepolia network');
+          return false;
+        }
+      }
+      console.error('Error switching to Sepolia:', switchError);
+      toast.error('Failed to switch to Sepolia network');
+      return false;
+    }
+  };
+
   const connectWallet = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        // Check if MetaMask is installed and unlocked
-        const isUnlocked = await window.ethereum._metamask?.isUnlocked();
-        if (!isUnlocked) {
-          toast.error(
-            <div>
-              <p className="font-medium">MetaMask is locked</p>
-              <p className="text-sm">Please unlock your MetaMask wallet to continue</p>
-            </div>
-          );
+    if (typeof window === 'undefined' || !window.ethereum) {
+      toast.error(
+        <div>
+          <p className="font-medium">MetaMask not found</p>
+          <p className="text-sm">Please install MetaMask to use this application</p>
+          <a 
+            href="https://metamask.io/download/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-600 text-sm mt-1 block"
+          >
+            Download MetaMask
+          </a>
+        </div>,
+        { duration: 6000 }
+      );
+      return;
+    }
+
+    try {
+      // Request accounts without checking lock status
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      if (!accounts || accounts.length === 0) {
+        toast.error('No accounts found. Please unlock MetaMask and try again.');
+        return;
+      }
+
+      // Check and switch network if needed
+      const chainId = await window.ethereum.request({ 
+        method: 'eth_chainId' 
+      });
+      
+      if (chainId !== SEPOLIA_CONFIG.chainId) {
+        toast.loading('Switching to Sepolia network...', { id: 'network-switch' });
+        const switched = await switchToSepolia();
+        if (!switched) {
+          toast.error('Failed to switch to Sepolia network', { id: 'network-switch' });
           return;
         }
+        toast.success('Switched to Sepolia network', { id: 'network-switch' });
+      }
 
-        // Request account access
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        
-        // Check network
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        if (chainId !== process.env.NEXT_PUBLIC_CHAIN_ID) {
-          toast.loading('Switching to correct network...', { id: 'network-switch' });
-          try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: `0x${Number(process.env.NEXT_PUBLIC_CHAIN_ID).toString(16)}` }],
-            });
-            toast.success('Network switched successfully', { id: 'network-switch' });
-          } catch (error: any) {
-            if (error.code === 4902) {
-              try {
-                toast.loading('Adding Anvil network...', { id: 'network-add' });
-                await window.ethereum.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [{
-                    chainId: `0x${Number(process.env.NEXT_PUBLIC_CHAIN_ID).toString(16)}`,
-                    chainName: 'Anvil Local',
-                    nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-                    rpcUrls: [process.env.NEXT_PUBLIC_NETWORK_RPC],
-                  }],
-                });
-                toast.success('Network added successfully', { id: 'network-add' });
-              } catch (addError: any) {
-                toast.error(
-                  <div>
-                    <p className="font-medium">Failed to add network</p>
-                    <p className="text-sm">Please add Anvil network manually to MetaMask</p>
-                  </div>,
-                  { id: 'network-add' }
-                );
-                return;
-              }
-            } else {
-              toast.error(
-                <div>
-                  <p className="font-medium">Network switch failed</p>
-                  <p className="text-sm">Please switch to Anvil network manually</p>
-                </div>
-              );
-              return;
-            }
-          }
-        }
-
+      // Initialize provider and contract
+      try {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const account = await signer.getAddress();
@@ -147,61 +177,26 @@ export function Web3Provider({ children }: Web3ProviderProps) {
             <p className="text-sm">Account: {account.slice(0, 6)}...{account.slice(-4)}</p>
           </div>
         );
-
-      } catch (error: any) {
-        console.error('Error connecting wallet:', error);
-        
-        // Handle specific error cases
-        if (error.code === 4001) {
-          toast.error(
-            <div>
-              <p className="font-medium">Connection rejected</p>
-              <p className="text-sm">Please approve the connection request in MetaMask</p>
-            </div>
-          );
-        } else if (error.code === -32002) {
-          toast.error(
-            <div>
-              <p className="font-medium">Connection pending</p>
-              <p className="text-sm">Please check MetaMask for a pending connection request</p>
-            </div>
-          );
-        } else if (error.message?.includes('already processing')) {
-          toast.error(
-            <div>
-              <p className="font-medium">Request in progress</p>
-              <p className="text-sm">Please complete the pending MetaMask request</p>
-            </div>
-          );
-        } else {
-          toast.error(
-            <div>
-              <p className="font-medium">Connection failed</p>
-              <p className="text-sm">Please try again or refresh the page</p>
-            </div>
-          );
-        }
+      } catch (error) {
+        console.error('Error initializing contract:', error);
+        toast.error('Failed to initialize connection. Please try again.');
+        return;
       }
-    } else {
-      toast.error(
-        <div>
-          <p className="font-medium">MetaMask not found</p>
-          <p className="text-sm">Please install MetaMask to use this application</p>
-          <a 
-            href="https://metamask.io/download/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-600 text-sm mt-1 block"
-          >
-            Download MetaMask
-          </a>
-        </div>,
-        { duration: 6000 }
-      );
+
+    } catch (error: any) {
+      console.error('Connection error:', error);
+      
+      if (error.code === 4001) {
+        toast.error('Connection rejected by user');
+      } else if (error.code === -32002) {
+        toast.error('Please check MetaMask for pending connection');
+      } else {
+        toast.error('Failed to connect. Please try again.');
+      }
     }
   };
 
-
+  // Rest of your code remains the same...
   const disconnectWallet = () => {
     setProvider(null);
     setContract(null);
@@ -209,6 +204,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     clearAddress();
     toast.success('Wallet disconnected successfully');
   };
+
   useEffect(() => {
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
@@ -241,7 +237,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     }
   }, []);
 
-  
   const uploadToPinata = async (file: File): Promise<string> => {
     try {
       const formData = new FormData();
@@ -264,34 +259,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       throw error;
     }
   };
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      // Listen for account changes
-      window.ethereum.on('accountsChanged', (accounts: string[]) => {
-        if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          checkUserRole(accounts[0]);
-        } else {
-          setAccount(null);
-          setProvider(null);
-          setContract(null);
-          setIsAuthority(false);
-          setIsGovt(false);
-        }
-      });
-
-      // Listen for chain changes
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
-
-      return () => {
-        window.ethereum.removeListener('accountsChanged', () => {});
-        window.ethereum.removeListener('chainChanged', () => {});
-      };
-    }
-  }, []);
 
   const value: Web3ContextType = {
     provider,
