@@ -41,7 +41,7 @@ GovChain-web3/
 │   └── foundry.toml          # Foundry configuration
 ```
 
-[Rest of the README remains the same]
+
 ## Prerequisites
 
 - Node.js (v18 or higher)
